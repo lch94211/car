@@ -196,11 +196,12 @@ async def calculate_fuel(request: Request, req: FuelRequest):
     cache_key = f"{req.vehicle_model}_{req.fuel_type}"
     try:
         if cache_key not in fuel_efficiency_cache:
-            prompt = f"""
+           prompt = f"""
             당신은 자동차 제원 전문가입니다.
-            사용자가 입력한 '{req.vehicle_model}' ({req.fuel_type})이(가) 도로에서 주행 가능한 실제 자동차 모델인지 먼저 판단하세요.
-            만약 유니콘, 우주선, 자전거 같은 장난이거나 존재하지 않는 차라면 다른 말 없이 오직 'FAKE'라고만 대답하세요.
-            실제 존재하는 자동차라면 공인 복합 연비(km/L) 숫자만 대답하세요. (예: 15.3)
+            사용자가 입력한 '{req.vehicle_model}' ({req.fuel_type})에 대한 공인 복합 연비(km/L) 숫자만 대답하세요. (예: 15.3)
+            단, 우주선, 자전거, 빗자루, 혹은 의미 없는 글자(예: ㅋㅋㅋ, 아아아) 등 명백하게 자동차가 아닌 장난식 입력일 경우에만 'FAKE'라고 대답하세요.
+            실제 존재하는 자동차 브랜드의 최신 모델이거나 파생 모델(예: 토레스 하이브리드 등)이라면 절대 FAKE라고 하지 말고, 기존 데이터를 바탕으로 해당 차종에 예상되는 합리적인 연비 숫자(예: 14.5)를 유추해서 대답하세요.
+            다른 설명은 일절 하지 말고 오직 숫자(또는 FAKE)만 출력하세요.
             """
             response = model.generate_content(prompt)
             
@@ -226,4 +227,5 @@ async def calculate_fuel(request: Request, req: FuelRequest):
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"서버 처리 중 오류가 발생했습니다: {str(e)}")
+
 

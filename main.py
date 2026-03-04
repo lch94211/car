@@ -3,19 +3,17 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import google.generativeai as genai
 import re
-import os                               # <- 추가
-from dotenv import load_dotenv          # <- 추가
+import os
+from dotenv import load_dotenv
 
-# 환경 변수 금고(.env) 열기
-load_dotenv()                           # <- 추가
+load_dotenv()
 
 # 1. 제미나이 API 설정
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY")) # <- 수정
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY")) # 🚨 깃허브엔 안 올라가고 환경변수에서 가져옴!
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 app = FastAPI(title="스마트 주유비 계산기 API")
 
-# 2. 요청 데이터 모델
 class FuelRequest(BaseModel):
     vehicle_model: str   
     fuel_type: str       
@@ -24,7 +22,7 @@ class FuelRequest(BaseModel):
 
 fuel_efficiency_cache = {}
 
-# 3. 웹 화면 (광고 시뮬레이션 포함)
+# 2. 웹 화면 (애드센스 심사 코드 적용 완료)
 @app.get("/", response_class=HTMLResponse)
 async def get_web_page():
     html_content = """
@@ -33,7 +31,10 @@ async def get_web_page():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Ai 스마트 주유비 계산기</title>
+        <title>스마트 주유비 계산기</title>
+
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7788233630120009" crossorigin="anonymous"></script>
+
         <style>
             body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; position: relative; }
             .calculator { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 320px; z-index: 1; }
@@ -60,7 +61,7 @@ async def get_web_page():
         </div>
 
         <div class="calculator">
-            <h2>🚗 Ai 스마트 주유비 계산기</h2>
+            <h2>🚗 스마트 주유비 계산기</h2>
             <input type="text" id="vehicle" placeholder="차종 (예: 쏘렌토 하이브리드)">
             <select id="fuel">
                 <option value="휘발유">휘발유</option>
@@ -73,8 +74,8 @@ async def get_web_page():
             <div id="result-box"></div>
         </div>
 
-        <div class="banner-ad">
-            [구글 애드센스 하단 배너 광고 영역]
+        <div class="banner-ad" id="real-banner-space">
+            [구글 애드센스 심사 대기 중...]
         </div>
 
         <script>
@@ -105,7 +106,7 @@ async def get_web_page():
                 const resultBox = document.getElementById('result-box');
 
                 resultBox.style.display = 'block';
-                resultBox.innerHTML = "⏳ 입력하신 차종을 검증 및 분석 중입니다...";
+                resultBox.innerHTML = "⏳ 제미나이가 입력하신 차종을 검증 및 분석 중입니다...";
 
                 try {
                     const response = await fetch('/calculate-fuel', {
@@ -129,7 +130,6 @@ async def get_web_page():
                             💳 예상 결제 금액: <span class="highlight">${data.total_cost_won.toLocaleString()}원</span>
                         `;
                     } else {
-                        // 에러가 났을 때 빨간색으로 경고 메시지 출력
                         resultBox.innerHTML = "<span style='color: red; font-weight: bold;'>❌ " + data.detail + "</span>";
                     }
                 } catch (error) {
@@ -142,13 +142,11 @@ async def get_web_page():
     """
     return HTMLResponse(content=html_content)
 
-# 4. 주유비 계산 API (장난 필터링 적용)
 @app.post("/calculate-fuel")
 async def calculate_fuel(req: FuelRequest):
     cache_key = f"{req.vehicle_model}_{req.fuel_type}"
     try:
         if cache_key not in fuel_efficiency_cache:
-            # ⭐ 프롬프트 업데이트: 장난/가짜 차종 걸러내기
             prompt = f"""
             당신은 자동차 제원 전문가입니다.
             사용자가 입력한 '{req.vehicle_model}' ({req.fuel_type})이(가) 도로에서 주행 가능한 실제 자동차 모델인지 먼저 판단하세요.
@@ -157,7 +155,6 @@ async def calculate_fuel(req: FuelRequest):
             """
             response = model.generate_content(prompt)
             
-            # 제미나이가 'FAKE'라고 판단한 경우 에러 발생시키기
             if "FAKE" in response.text.upper():
                 raise ValueError("장난은 그만! 😅 실제 존재하는 자동차 모델명을 입력해주세요.")
 
@@ -177,7 +174,6 @@ async def calculate_fuel(req: FuelRequest):
             "total_cost_won": int(total_cost)
         }
     except ValueError as ve:
-        # 사용자의 입력이 잘못된 경우 (장난 등)
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail="서버 처리 중 오류가 발생했습니다.")

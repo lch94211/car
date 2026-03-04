@@ -34,10 +34,7 @@ async def get_web_page():
         <title>Ai 스마트 주유비 계산기</title>
 
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7788233630120009" crossorigin="anonymous"></script>
-        <meta property="og:title" content="스마트 주유비 계산기 🚗">
-        <meta property="og:description" content="차종과 목적지만 입력하세요! AI가 정확한 필요 주유량과 예상 주유비를 계산해 드립니다.">
-        <meta property="og:image" content="https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=1000&auto=format&fit=crop">
-        <meta property="og:url" content="https://ai-smart-fuel.onrender.com"> <style>
+    
 
         <style>
             body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; position: relative; }
@@ -181,4 +178,5 @@ async def calculate_fuel(req: FuelRequest):
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail="서버 처리 중 오류가 발생했습니다.")
+
 

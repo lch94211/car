@@ -1,18 +1,47 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import google.generativeai as genai
 import re
 import os
 from dotenv import load_dotenv
 
+# 🛡️ 보안 추가 라이브러리
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 load_dotenv()
 
-# 1. 제미나이 API 설정
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY")) # 🚨 깃허브엔 안 올라가고 환경변수에서 가져옴!
+# 제미나이 API 설정
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 app = FastAPI(title="스마트 주유비 계산기 API")
+
+# --- 🛡️ 보안 1: Rate Limiter (IP당 호출 횟수 제한) ---
+# 접속자의 IP를 기준으로 횟수를 카운트합니다.
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# --- 🛡️ 보안 2: CORS (교차 출처 리소스 공유) 설정 ---
+# 다른 웹사이트에서 우리 API를 몰래 호출하지 못하도록 막고,
+# 불필요한 HTTP 메서드(PUT, DELETE, TRACE 등)를 원천 차단합니다.
+origins = [
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    "https://본인의-웹사이트-주소.onrender.com"  # 🚨 여기에 본인의 Render 주소를 적어주세요!
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST"], # 오직 GET(화면 보기)과 POST(계산하기)만 허용
+    allow_headers=["*"],
+)
 
 class FuelRequest(BaseModel):
     vehicle_model: str   
@@ -22,19 +51,23 @@ class FuelRequest(BaseModel):
 
 fuel_efficiency_cache = {}
 
-# 2. 웹 화면 (애드센스 심사 코드 적용 완료)
+# Rate Limiter를 사용하려면 함수 괄호 안에 'request: Request'를 추가해야 합니다.
 @app.get("/", response_class=HTMLResponse)
-async def get_web_page():
+async def get_web_page(request: Request):
     html_content = """
     <!DOCTYPE html>
     <html lang="ko">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Ai 스마트 주유비 계산기</title>
+        <title>스마트 주유비 계산기</title>
+
+        <meta property="og:title" content="스마트 주유비 계산기 🚗">
+        <meta property="og:description" content="차종과 목적지만 입력하세요! AI가 정확한 필요 주유량과 예상 주유비를 계산해 드립니다.">
+        <meta property="og:image" content="https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=1000&auto=format&fit=crop">
+        <meta property="og:url" content="https://ai-smart-fuel.onrender.com">
 
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7788233630120009" crossorigin="anonymous"></script>
-    
 
         <style>
             body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; position: relative; }
@@ -45,8 +78,6 @@ async def get_web_page():
             button:hover { background-color: #004494; }
             #result-box { margin-top: 20px; padding: 15px; background-color: #e9f5ff; border-radius: 8px; color: #0056b3; display: none; font-size: 14px; line-height: 1.6; }
             .highlight { font-size: 18px; font-weight: bold; color: #d9534f; }
-            
-            /* --- 시뮬레이션 광고 CSS --- */
             .banner-ad { width: 320px; height: 50px; background-color: #e0e0e0; border: 1px dashed #999; margin-top: 20px; display: flex; justify-content: center; align-items: center; color: #666; font-size: 12px; font-weight: bold; }
             .interstitial-ad { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0,0,0,0.9); z-index: 100; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; }
             .interstitial-ad h1 { color: #f1c40f; }
@@ -107,7 +138,7 @@ async def get_web_page():
                 const resultBox = document.getElementById('result-box');
 
                 resultBox.style.display = 'block';
-                resultBox.innerHTML = "⏳ 입력하신 차종을 검증 및 분석 중입니다...";
+                resultBox.innerHTML = "⏳입력하신 차종을 검증 및 분석 중입니다...";
 
                 try {
                     const response = await fetch('/calculate-fuel', {
@@ -120,6 +151,12 @@ async def get_web_page():
                             target_distance: parseInt(distance)
                         })
                     });
+
+                    // 🛡️ 429 에러(Rate Limit 초과) 처리 추가
+                    if(response.status === 429) {
+                        resultBox.innerHTML = "<span style='color: red; font-weight: bold;'>❌ 너무 많은 요청이 발생했습니다. 1분 후에 다시 시도해주세요.</span>";
+                        return;
+                    }
 
                     const data = await response.json();
                     
@@ -144,7 +181,8 @@ async def get_web_page():
     return HTMLResponse(content=html_content)
 
 @app.post("/calculate-fuel")
-async def calculate_fuel(req: FuelRequest):
+@limiter.limit("5/minute") # 🛡️ 보안 1: 같은 IP에서 1분에 5번까지만 계산 허용!
+async def calculate_fuel(request: Request, req: FuelRequest):
     cache_key = f"{req.vehicle_model}_{req.fuel_type}"
     try:
         if cache_key not in fuel_efficiency_cache:
@@ -161,7 +199,7 @@ async def calculate_fuel(req: FuelRequest):
 
             numbers = re.findall(r"[-+]?\d*\.\d+|\d+", response.text)
             if not numbers: 
-                raise ValueError("정확한 연비 데이터를 찾을 수 없습니다. (예: 쏘렌토, 아반떼 등 정확한 차종 입력)")
+                raise ValueError("정확한 연비 데이터를 찾을 수 없습니다.")
             
             fuel_efficiency_cache[cache_key] = float(numbers[0])
             
@@ -177,6 +215,4 @@ async def calculate_fuel(req: FuelRequest):
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        raise HTTPException(status_code=500, detail="서버 처리 중 오류가 발생했습니다.")
-
-
+        raise HTTPException(status_code=500, detail=f"서버 처리 중 오류가 발생했습니다: {str(e)}")

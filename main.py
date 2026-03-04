@@ -32,7 +32,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 origins = [
     "http://127.0.0.1:8000",
     "http://localhost:8000",
-    "https://본인의-웹사이트-주소.onrender.com"  # 🚨 여기에 본인의 Render 주소를 적어주세요!
+    "https://ai-smart-fuel.onrender.com"  # 🚨 여기에 본인의 Render 주소를 적어주세요!
 ]
 
 app.add_middleware(
@@ -215,3 +215,4 @@ async def calculate_fuel(request: Request, req: FuelRequest):
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"서버 처리 중 오류가 발생했습니다: {str(e)}")
+

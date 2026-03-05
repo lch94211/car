@@ -7,7 +7,6 @@ import re
 import os
 from dotenv import load_dotenv
 
-# 🛡️ 보안 라이브러리
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -19,12 +18,10 @@ model = genai.GenerativeModel('gemini-2.5-flash')
 
 app = FastAPI(title="스마트 주유비 계산기 API")
 
-# --- 🛡️ Rate Limiter ---
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# --- 🛡️ CORS 설정 ---
 origins = [
     "http://127.0.0.1:8000",
     "http://localhost:8000",
@@ -58,13 +55,12 @@ async def get_web_page(request: Request):
         <title>스마트 주유비 계산기</title>
 
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚗</text></svg>">
-
         <meta property="og:title" content="스마트 주유비 계산기 🚗">
         <meta property="og:description" content="차종과 목적지만 입력하세요! AI가 정확한 필요 주유량과 예상 주유비를 계산해 드립니다.">
         <meta property="og:image" content="https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=1000&auto=format&fit=crop">
         <meta property="og:url" content="https://ai-smart-fuel.onrender.com/">
 
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KQKFJH24P"></script>
         <script>
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
@@ -79,7 +75,13 @@ async def get_web_page(request: Request):
             .calculator { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 320px; z-index: 1; }
             h2 { text-align: center; color: #333; margin-bottom: 20px; }
             input, select { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
-            button { width: 100%; padding: 15px; background-color: #0056b3; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+            
+            /* 🚀 단위(원, km)를 고정하기 위한 컨테이너 스타일 추가 */
+            .input-group { position: relative; margin-bottom: 15px; }
+            .input-group input { margin-bottom: 0; padding-right: 35px; /* 글자가 겹치지 않게 우측 여백 확보 */ }
+            .input-group .unit { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #888; font-weight: bold; pointer-events: none; }
+
+            button { width: 100%; padding: 15px; background-color: #0056b3; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 5px; }
             button:hover { background-color: #004494; }
             #result-box { margin-top: 20px; padding: 15px; background-color: #e9f5ff; border-radius: 8px; color: #0056b3; display: none; font-size: 14px; line-height: 1.6; }
             .highlight { font-size: 18px; font-weight: bold; color: #d9534f; }
@@ -104,8 +106,16 @@ async def get_web_page(request: Request):
                 <option value="휘발유">휘발유</option>
                 <option value="경유">경유</option>
             </select>
-            <input type="text" id="price" placeholder="현재 주유소 가격 (원/L)" oninput="formatNumber(this)">
-            <input type="text" id="distance" placeholder="목표 주행 거리 (km)" oninput="formatNumber(this)">
+            
+            <div class="input-group">
+                <input type="text" id="price" placeholder="현재 주유소 가격" oninput="formatNumber(this)">
+                <span class="unit">원</span>
+            </div>
+            <div class="input-group">
+                <input type="text" id="distance" placeholder="목표 주행 거리" oninput="formatNumber(this)">
+                <span class="unit">km</span>
+            </div>
+
             <button onclick="startCalculation()">계산하기</button>
 
             <div id="result-box"></div>
@@ -116,7 +126,6 @@ async def get_web_page(request: Request):
         </div>
 
         <script>
-            // 🚀 UX 개선: 숫자 입력 시 천 단위 콤마 자동 추가 함수
             function formatNumber(input) {
                 let value = input.value.replace(/,/g, ''); 
                 if (!isNaN(value) && value !== "") {
@@ -128,7 +137,6 @@ async def get_web_page(request: Request):
 
             async function startCalculation() {
                 const vehicle = document.getElementById('vehicle').value;
-                // 계산을 위해 콤마 제거 후 숫자로 변환
                 const priceStr = document.getElementById('price').value.replace(/,/g, '');
                 const distanceStr = document.getElementById('distance').value.replace(/,/g, '');
 
@@ -140,12 +148,10 @@ async def get_web_page(request: Request):
                 const fullAd = document.getElementById('full-ad');
                 const resultBox = document.getElementById('result-box');
 
-                // 1. 전면 광고 띄우기 및 로딩 UI 표시
                 fullAd.style.display = 'flex';
                 resultBox.style.display = 'block';
                 resultBox.innerHTML = "⏳ 입력하신 차종을 검증 및 분석 중입니다...";
 
-                // 🚀 속도 개선: 2. 광고가 뜨는 동안 백그라운드에서 API 호출 동시 진행 (비동기 병렬 처리)
                 const fetchPromise = fetch('/calculate-fuel', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -157,13 +163,10 @@ async def get_web_page(request: Request):
                     })
                 });
 
-                // 3. 광고 노출 시간 2초 대기
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                // 4. 전면 광고 닫기
                 fullAd.style.display = 'none';
 
-                // 5. 서버 응답 결과 대기 및 화면 출력 (미리 끝났다면 즉시 출력됨)
                 try {
                     const response = await fetchPromise;
                     
@@ -197,7 +200,6 @@ async def get_web_page(request: Request):
 @app.post("/calculate-fuel")
 @limiter.limit("5/minute")
 async def calculate_fuel(request: Request, req: FuelRequest):
-    # 🚀 서버 효율 개선: 띄어쓰기 제거 및 대문자 변환 정규화 (캐시 적중률 극대화)
     normalized_vehicle = req.vehicle_model.replace(" ", "").upper()
     cache_key = f"{normalized_vehicle}_{req.fuel_type}"
     

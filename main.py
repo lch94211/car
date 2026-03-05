@@ -71,24 +71,42 @@ async def get_web_page(request: Request):
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7788233630120009" crossorigin="anonymous"></script>
 
         <style>
-            body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; position: relative; }
-            .calculator { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 320px; z-index: 1; }
-            h2 { text-align: center; color: #333; margin-bottom: 20px; }
-            input, select { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
-            
-            /* 🚀 단위(원, km)를 고정하기 위한 컨테이너 스타일 추가 */
-            .input-group { position: relative; margin-bottom: 15px; }
-            .input-group input { margin-bottom: 0; padding-right: 35px; /* 글자가 겹치지 않게 우측 여백 확보 */ }
-            .input-group .unit { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #888; font-weight: bold; pointer-events: none; }
+            /* 🚀 웹 폰트 로드: 나눔스퀘어라운드 (둥글둥글하고 예쁜 폰트) */
+            @font-face {
+                font-family: 'NanumSquareRound';
+                src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/NanumSquareRound.woff') format('woff');
+                font-weight: normal;
+                font-style: normal;
+            }
 
-            button { width: 100%; padding: 15px; background-color: #0056b3; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 5px; }
-            button:hover { background-color: #004494; }
-            #result-box { margin-top: 20px; padding: 15px; background-color: #e9f5ff; border-radius: 8px; color: #0056b3; display: none; font-size: 14px; line-height: 1.6; }
-            .highlight { font-size: 18px; font-weight: bold; color: #d9534f; }
-            .banner-ad { width: 320px; height: 50px; background-color: #e0e0e0; border: 1px dashed #999; margin-top: 20px; display: flex; justify-content: center; align-items: center; color: #666; font-size: 12px; font-weight: bold; }
+            /* 전체 글꼴을 나눔스퀘어라운드로 변경 */
+            body { font-family: 'NanumSquareRound', 'Malgun Gothic', sans-serif; background-color: #f4f7f6; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; position: relative; }
+            .calculator { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 340px; z-index: 1; }
+            
+            /* 제목 크기 키움 */
+            h2 { text-align: center; color: #333; margin-bottom: 25px; font-size: 24px; font-weight: bold; }
+            
+            /* 🚀 입력창과 선택창 크기 및 폰트 큼직하게 변경 */
+            input, select { width: 100%; padding: 15px; margin-bottom: 18px; border: 1.5px solid #ddd; border-radius: 12px; box-sizing: border-box; font-size: 18px; font-family: 'NanumSquareRound', sans-serif; outline: none; transition: border-color 0.3s; }
+            input:focus, select:focus { border-color: #0056b3; } /* 클릭 시 테두리 색 변경 효과 */
+            
+            /* 단위 위치 조정 */
+            .input-group { position: relative; margin-bottom: 18px; }
+            .input-group input { margin-bottom: 0; padding-right: 45px; }
+            .input-group .unit { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); color: #888; font-weight: bold; pointer-events: none; font-size: 16px; }
+
+            /* 버튼 큼직하고 둥글게 */
+            button { width: 100%; padding: 18px; background-color: #0056b3; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; font-family: 'NanumSquareRound', sans-serif; cursor: pointer; transition: 0.3s; margin-top: 5px; box-shadow: 0 4px 6px rgba(0,86,179,0.2); }
+            button:hover { background-color: #004494; transform: translateY(-2px); } /* 마우스 올렸을 때 살짝 뜨는 애니메이션 */
+
+            /* 결과창 글자 크기 키움 */
+            #result-box { margin-top: 25px; padding: 20px; background-color: #e9f5ff; border-radius: 12px; color: #0056b3; display: none; font-size: 16px; line-height: 1.8; }
+            .highlight { font-size: 22px; font-weight: bold; color: #d9534f; }
+            
+            .banner-ad { width: 320px; height: 50px; background-color: #e0e0e0; border: 1px dashed #999; margin-top: 20px; display: flex; justify-content: center; align-items: center; color: #666; font-size: 12px; font-weight: bold; border-radius: 8px; }
             .interstitial-ad { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0,0,0,0.9); z-index: 100; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; }
             .interstitial-ad h1 { color: #f1c40f; }
-            .interstitial-ad p { font-size: 14px; color: #ccc; }
+            .interstitial-ad p { font-size: 16px; color: #ccc; font-family: 'NanumSquareRound', sans-serif; }
         </style>
     </head>
     <body>
@@ -96,11 +114,11 @@ async def get_web_page(request: Request):
         <div class="interstitial-ad" id="full-ad">
             <h1>[전면 광고 스폰서]</h1>
             <p>이번 달 자동차 보험료, 최저가로 비교해보세요!</p>
-            <p style="margin-top: 50px; font-size: 12px;">(2초 후 자동으로 닫히고 계산 결과가 나옵니다...)</p>
+            <p style="margin-top: 50px; font-size: 14px;">(2초 후 자동으로 닫히고 계산 결과가 나옵니다...)</p>
         </div>
 
         <div class="calculator">
-            <h2>🚗 Ai 스마트 주유비 계산기</h2>
+            <h2>🚗 스마트 주유비 계산기</h2>
             <input type="text" id="vehicle" placeholder="차종 (예: 쏘렌토 하이브리드)">
             <select id="fuel">
                 <option value="휘발유">휘발유</option>
@@ -213,7 +231,7 @@ async def calculate_fuel(request: Request, req: FuelRequest):
             response = model.generate_content(prompt)
             
             if "FAKE" in response.text.upper():
-                raise ValueError("😅 실제 존재하는 자동차 모델명을 입력해주세요.")
+                raise ValueError("장난은 그만! 😅 실제 존재하는 자동차 모델명을 입력해주세요.")
 
             numbers = re.findall(r"[-+]?\d*\.\d+|\d+", response.text)
             if not numbers: 
